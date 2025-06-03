@@ -30,7 +30,6 @@ from collections import namedtuple
 from html import escape
 
 from kana import *
-from cover import *
 from pronunciation import format_pronunciations
 from datetime import datetime
 
@@ -301,9 +300,6 @@ def write_index(
     for stream in list(section_streams.values()):
         write_index_footer(stream)
         stream.close()
-
-    # create cover
-    createCover(dictionary_name, title, 768, 1024)
 
     # minify html
     minifier = htmlmin.Minifier(remove_empty_space=True)
