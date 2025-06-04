@@ -37,6 +37,8 @@ from pyglossary.glossary_v2 import Glossary
 NAME_ENTRY, VOCAB_ENTRY = range(2)
 NAME_INDEX, VOCAB_INDEX = range(2)
 
+SEP = '・'
+
 Ortho = namedtuple("Ortho", ["value", "rank", "inflgrps"])
 
 Kanji = namedtuple("Kanji", ["keb", "rank"])
@@ -165,11 +167,11 @@ def write_index(
                         special_readings[reading.re_restr] = []
                     special_readings[reading.re_restr].append(reading)
                 readings.append(format_pronunciations(reading))
-            label = ";".join(readings)
+            label = SEP.join(readings)
             if entry.kanjis:
                 label += (
                     "【"
-                    + ";".join(
+                    + SEP.join(
                         [escape(kanji.keb, quote=False) for kanji in entry.kanjis]
                     )
                     + "】"
@@ -183,13 +185,13 @@ def write_index(
                     readings = []
                     for reading in special_readings[kanji]:
                         readings.append(format_pronunciations(reading))
-                    label = ";".join(readings)
+                    label = SEP.join(readings)
                     label += "【" + escape(kanji, quote=False) + "】"
                     stream.write(f"<p class=lab>{label}</p>\n")
         else:
-            label = ";".join([reading.reb for reading in entry.readings])
+            label = SEP.join([reading.reb for reading in entry.readings])
             if entry.kanjis:
-                label += "【" + ";".join([kanji.keb for kanji in entry.kanjis]) + "】"
+                label += "【" + SEP.join([kanji.keb for kanji in entry.kanjis]) + "】"
 
         assert entry.senses
 
@@ -199,7 +201,7 @@ def write_index(
                 stream.write("   <li>")
                 if sense.pos or sense.dial or sense.misc:
                     stream.write(
-                        f"      <span class=pos>{escape(','.join(sense.pos + sense.dial + sense.misc))}</span>\n"
+                        f"      <span class=pos>{escape(', '.join(sense.pos + sense.dial + sense.misc))}</span>\n"
                     )
                 stream.write(f"      {escape('; '.join(sense.gloss), quote=False)}")
                 if len(sense.s_inf) > 0 and add_entry_info:
@@ -217,11 +219,11 @@ def write_index(
                 reverse=True, key=lambda sentence: sentence.good_sentence
             )
             for sentence in entry.sentences:
-                stream.write(' <div class="sen">\n')
+                stream.write(' <blockquote>\n')
                 stream.write(f"  <span>{sentence.japanese}</span>\n")
                 stream.write("  <br>\n")
                 stream.write(f"  <span>{sentence.english}</span>\n")
-                stream.write(" </div>\n")
+                stream.write(" </blockquote>\n")
             stream.write("</div>\n")
 
         gl_entry = glossary.newEntry(word=[o.value for o in entry.orthos], defi=stream.getvalue(), defiFormat="h")
