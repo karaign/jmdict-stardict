@@ -19,7 +19,7 @@ Stardict format.
 Why is this?
 ------------
 
-Other English-Japanese Stardict dictionaries online lack
+Other Japanese-English Stardict dictionaries online lack
 [pitch accent](https://en.wikipedia.org/wiki/Japanese_pitch_accent)
 and example sentences, aren't updated regularly and aren't easy to customize or extend.
 This is generated using a Python script and the latest JMDict data,
