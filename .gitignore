@@ -2,7 +2,6 @@
 *.gz
 *.mobi
 *.pyc
-*.txt
 *cover.jpg
 *cover.png
 *.opf
@@ -13,6 +12,6 @@
 entry-*.html
 kindlegen
 /.vscode
-/out
 /venv
+/out
 __pycache__/
