@@ -35,6 +35,7 @@ from pronunciation import Pronunciation
 import argparse
 from types import SimpleNamespace
 
+from pyglossary.glossary_v2 import Glossary
 
 # limit the number of entries for quick experiments
 MAX_ENTRIES = sys.maxsize
@@ -467,7 +468,7 @@ def get_args():
             )
 
     arg_parser = argparse.ArgumentParser(
-        description="Build the JMdict or JMnedict for Kindle",
+        description="Build the JMdict or JMnedict for Stardict",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     arg_parser.add_argument(
@@ -515,6 +516,7 @@ def get_args():
 
 def main():
     args = get_args()
+    Glossary.init()
 
     # Create files
     if args.dictionary.create_jmdict or args.dictionary.create_combined:
@@ -543,7 +545,7 @@ def main():
             jmdict_entries,
             "jmdict",
             "JMdict Japanese-English Dictionary",
-            sys.stdout,
+            Glossary(),
             default_index=VOCAB_INDEX,
             add_entry_info=args.info,
         )
@@ -560,7 +562,7 @@ def main():
             jmnedict_entries,
             "jmnedict",
             "JMnedict Japanese Names",
-            sys.stdout,
+            Glossary(),
             default_index=NAME_INDEX,
             add_entry_info=args.info,
         )
@@ -571,7 +573,7 @@ def main():
             jmdict_entries + jmnedict_entries,
             "combined",
             "JMdict Japanese-English Dictionary and JMnedict Japanese Names",
-            sys.stdout,
+            Glossary(),
             default_index=None,
             add_entry_info=args.info,
         )

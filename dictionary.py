@@ -24,14 +24,17 @@
 
 
 import sys
-import htmlmin
 
 from collections import namedtuple
 from html import escape
 
 from kana import *
 from pronunciation import format_pronunciations
-from datetime import datetime
+from datetime import date, datetime
+
+from pyglossary.glossary_v2 import Glossary
+from io import StringIO
+import shutil
 
 NAME_ENTRY, VOCAB_ENTRY = range(2)
 NAME_INDEX, VOCAB_INDEX = range(2)
@@ -78,7 +81,7 @@ class Entry:
         self.entry_type = entry_type
 
         self.headword = self._headword()
-        self.section = self._section()
+        # self.section = self._section()
 
     def _headword(self):
         # Return the first hira/kata-kana word
@@ -118,7 +121,7 @@ class Entry:
                             del ortho.inflgrps[inflgrp_name]
 
 
-def write_index_header(stream):
+def initialize_glossary(stream):
     stream.write("<!DOCTYPE html>\n")
     stream.write("<html>\n")
     stream.write("<head>\n")
@@ -133,7 +136,7 @@ def write_index_header(stream):
     stream.write("<mbp:frameset>\n")
 
 
-def write_index_footer(stream):
+def finalize_glossary(stream):
     stream.write("<mbp:pagebreak/>\n")
     stream.write("</mbp:frameset>\n")
     stream.write("</body>\n")
@@ -160,14 +163,11 @@ def write_index(
     entries,
     dictionary_name,
     title,
-    stream,
+    glossary: Glossary,
     respect_re_restr=True,
     default_index=VOCAB_INDEX,
     add_entry_info=True,
 ):
-    # http://www.mobipocket.com/dev/article.asp?basefolder=prcgen&file=indexing.htm
-    # http://kindlegen.s3.amazonaws.com/AmazonKindlePublishingGuidelines.pdf
-    # http://www.klokan.cz/projects/stardict-lingea/tab2opf.py
 
     # Sort entries alphabetically
     entries.sort(key=sort_function)
@@ -175,36 +175,10 @@ def write_index(
     prev_section = None
     dictionary_file_name = dictionary_name.replace(" ", "_")
 
-    stream = None
-
-    sections = []
-    section_streams = {}
-
     for entry in entries:
-        section = entry.section
 
-        if section != prev_section:
-            try:
-                stream = section_streams[section]
-            except KeyError:
-                sections.append(section)
-                filename = f"entry-{dictionary_file_name}-{section}.html"
-                stream = open(filename, "wt", encoding="UTF-8")
-                section_streams[section] = stream
-                write_index_header(stream)
-
-            prev_section = section
-
-        # scriptable="yes" is needed, otherwise the results are cut off or results after the actual result are also dsiplayed
-        if default_index != None:
-            if entry.entry_type == VOCAB_ENTRY:
-                stream.write('<idx:entry name="v" scriptable="yes">\n')
-            elif entry.entry_type == NAME_ENTRY:
-                stream.write('<idx:entry name="n" scriptable="yes">\n')
-            else:
-                print(f"Not implemented entry type: {entry.entry_type}")
-        else:
-            stream.write('<idx:entry scriptable="yes">\n')
+        # Write HTML into a text buffer
+        stream = StringIO()
 
         assert entry.readings
         if respect_re_restr:
@@ -275,94 +249,15 @@ def write_index(
                 stream.write(" </div>\n")
             stream.write("</div>\n")
 
-        for ortho in entry.orthos:
-            stream.write(f' <idx:orth value="{escape(ortho.value, quote=True)}"')
-            if ortho.inflgrps:
-                stream.write(">\n")
-                for inflgrp in list(ortho.inflgrps.values()):
-                    assert inflgrp
-                    stream.write("  <idx:infl>\n")
-                    iforms = list(inflgrp)
-                    iforms.sort()
-                    for iform in iforms:
-                        stream.write(
-                            f'   <idx:iform value="{escape(iform, quote=True)}"/>\n'
-                        )
-                    stream.write("  </idx:infl>\n")
-                stream.write(" </idx:orth>\n")
-            else:
-                stream.write("/>\n")
-
-        stream.write("</idx:entry>\n")
-
-        stream.write("<hr/>\n")
-
-    for stream in list(section_streams.values()):
-        write_index_footer(stream)
+        gl_entry = glossary.newEntry(word=[o.value for o in entry.orthos], defi=stream.getvalue(), defiFormat="h")
+        glossary.addEntry(gl_entry)
         stream.close()
 
-    # minify html
-    minifier = htmlmin.Minifier(remove_empty_space=True)
-    for i in range(len(sections)):
-        section = sections[i]
-        with open(
-            f"entry-{dictionary_file_name}-{section}.html", "r+", encoding="UTF-8"
-        ) as f:
-            content = f.read()
-            content = minifier.minify(content)
-            f.seek(0)
-            f.write(content)
-            f.truncate()
+    # Write out resulting dictionary
+    glossary.setInfo('name', title)
+    glossary.setInfo('version', date.today().isoformat())
+    glossary.setInfo('wordcount', str(len(entries)))
 
-    # Write the OPF
-    stream = open(f"{dictionary_file_name}.opf", "wt", encoding="UTF-8")
-    stream.write('<?xml version="1.0" encoding="utf-8"?>\n')
-    stream.write('<package unique-identifier="uid">\n')
-    stream.write("  <metadata>\n")
-    stream.write('    <dc-metadata xmlns:dc="http://purl.org/metadata/dublin_core">\n')
-    stream.write(
-        f"      <dc:Identifier id=\"uid\">{hex(hash(title)).split('x')[1]}</dc:Identifier>\n"
-    )
-    stream.write(f"      <dc:Title><h2>{title}</h2></dc:Title>\n")
-    stream.write("      <dc:Language>ja</dc:Language>\n")
-    stream.write(
-        "      <dc:Creator>Electronic Dictionary Research &amp; Development Group</dc:Creator>\n"
-    )
-    stream.write(f"      <dc:Date>{datetime.now().strftime('%Y-%m-%d')}</dc:Date>\n")
-    stream.write(
-        "      <dc:Copyrights>2013 Electronic Dictionary Research &amp; Development Group</dc:Copyrights>\n"
-    )
-    stream.write("    </dc-metadata>\n")
-    stream.write("    <x-metadata>\n")
-    stream.write('      <output encoding="UTF-8" flatten-dynamic-dir="yes"/>\n')
-    stream.write("      <DictionaryInLanguage>ja</DictionaryInLanguage>\n")
-    stream.write("      <DictionaryOutLanguage>en</DictionaryOutLanguage>\n")
-    if default_index == VOCAB_INDEX:
-        stream.write("  <DictionaryOutLanguage>v</DictionaryOutLanguage>\n")
-    elif default_index == NAME_INDEX:
-        stream.write("  <DictionaryOutLanguage>n</DictionaryOutLanguage>\n")
-    stream.write("    </x-metadata>\n")
-    stream.write("  </metadata>\n")
-    stream.write("  <manifest>\n")
-    stream.write(
-        f'    <item id="cover" href="{dictionary_file_name}-cover.jpg" media-type="image/jpeg" properties="cover-image"/>\n'
-    )
-    stream.write('    <item id="css" href="style.css" media-type="text/css"/>\n')
-    stream.write(
-        f'    <item id="frontmatter" href="{dictionary_file_name}-frontmatter.html" media-type="text/x-oeb1-document"/>\n'
-    )
-    for i in range(len(sections)):
-        section = sections[i]
-        stream.write(
-            f'    <item id="entry-{i}" href="entry-{dictionary_file_name}-{escape(section, quote=True)}.html" media-type="text/x-oeb1-document"/>\n'
-        )
-    stream.write("  </manifest>\n")
-    stream.write("\n")
-    stream.write("  <spine>\n")
-    stream.write('    <itemref idref="frontmatter"/>\n')
-    for i in range(len(sections)):
-        stream.write(f'    <itemref idref="entry-{i}"/>\n')
-    stream.write("  </spine>\n")
-    stream.write("  <tours/>\n")
-    stream.write("  <guide/>\n")
-    stream.write("</package>\n")
+    glossary.write(f'./out/{dictionary_file_name}/{dictionary_file_name}.ifo', format='Stardict')
+    shutil.copy('style.css', f'./out/{dictionary_file_name}/{dictionary_file_name}.css')
+
