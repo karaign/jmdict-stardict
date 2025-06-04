@@ -20,21 +20,19 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
-
-import sys
 
 from collections import namedtuple
 from html import escape
+from datetime import date
+from io import StringIO
+from shutil import copy
+from os import makedirs
 
 from kana import *
 from pronunciation import format_pronunciations
-from datetime import date, datetime
 
 from pyglossary.glossary_v2 import Glossary
-from io import StringIO
-import shutil
 
 NAME_ENTRY, VOCAB_ENTRY = range(2)
 NAME_INDEX, VOCAB_INDEX = range(2)
@@ -121,28 +119,6 @@ class Entry:
                             del ortho.inflgrps[inflgrp_name]
 
 
-def initialize_glossary(stream):
-    stream.write("<!DOCTYPE html>\n")
-    stream.write("<html>\n")
-    stream.write("<head>\n")
-    stream.write(
-        '<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>\n'
-    )
-    stream.write('<link rel="stylesheet" type="text/css" href="style.css"/>\n')
-    stream.write("</head>\n")
-    stream.write(
-        '<body topmargin="0" bottommargin="0" leftmargin="0" rightmargin="0">\n'
-    )
-    stream.write("<mbp:frameset>\n")
-
-
-def finalize_glossary(stream):
-    stream.write("<mbp:pagebreak/>\n")
-    stream.write("</mbp:frameset>\n")
-    stream.write("</body>\n")
-    stream.write("</html>\n")
-
-
 def sort_function(entry):
     if len(entry.kanjis) > 0:
         k_rank = entry.kanjis[0].rank
@@ -170,9 +146,8 @@ def write_index(
 ):
 
     # Sort entries alphabetically
-    entries.sort(key=sort_function)
+    # entries.sort(key=sort_function)
 
-    prev_section = None
     dictionary_file_name = dictionary_name.replace(" ", "_")
 
     for entry in entries:
@@ -258,6 +233,9 @@ def write_index(
     glossary.setInfo('version', date.today().isoformat())
     glossary.setInfo('wordcount', str(len(entries)))
 
-    glossary.write(f'./out/{dictionary_file_name}/{dictionary_file_name}.ifo', format='Stardict')
-    shutil.copy('style.css', f'./out/{dictionary_file_name}/{dictionary_file_name}.css')
+    output_dir = f'./out/{dictionary_file_name}'
+    makedirs(output_dir, exist_ok=True)
+
+    glossary.write(f'{output_dir}/{dictionary_file_name}.ifo', format='StardictMergeSyns')
+    copy('style.css', f'{output_dir}/{dictionary_file_name}.css')
 
