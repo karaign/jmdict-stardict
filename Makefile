@@ -76,9 +76,6 @@ combined: venv JMdict_e.gz JMnedict.xml.gz sentences.tar.bz2 jpn_indices.tar.bz2
 	fi
 
 clean:
-	rm -rf *.opf entry-*.html *cover.jpg *.tar.bz2 *.gz *.csv *cover.png *.tmp *.zip out cache
-
-clean_all: clean
-	rm -rf *.mobi
+	rm -rf *.tar.bz2 *.gz *.csv *.tmp *.zip out cache
 
 .PHONY: all clean jmdict jmnedict combined venv
