@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 
-from collections import namedtuple
+from typing import NamedTuple
 from html import escape
 from datetime import date
 from io import StringIO
@@ -39,33 +39,46 @@ NAME_INDEX, VOCAB_INDEX = range(2)
 
 SEP = '・'
 
-Ortho = namedtuple("Ortho", ["value", "rank", "inflgrps"])
+class Ortho(NamedTuple):
+    value: str
+    rank: int
+    inflgrps: dict
 
-Kanji = namedtuple("Kanji", ["keb", "rank"])
-
+class Kanji(NamedTuple):
+    keb: str
+    rank: int
 
 class Reading:
-    def __init__(self, reb, rank, re_restr, pronunciation):
+    def __init__(self, reb: str, rank: int, re_restr: str | None, pronunciation: dict[str, any] | None):
         self.reb = reb
         self.rank = rank
         self.re_restr = re_restr
         self.pronunciation = pronunciation
 
+class Sense(NamedTuple):
+    pos:   list[str]
+    dial:  list[str]
+    gloss: list[str]
+    misc:  list[str]
+    s_inf: list[str]
 
-Sense = namedtuple("Sense", ["pos", "dial", "gloss", "misc", "s_inf"])
+# class Sentence:
+#     def __init__(self, english: str, japanese: str, good_sentence: bool):
+#         self.english = english
+#         self.japanese = japanese
+#         self.good_sentence = good_sentence
 
-
-class Sentence:
-    def __init__(self, english, japanese, good_sentence):
-        self.english = english
-        self.japanese = japanese
-        self.good_sentence = good_sentence
+class Sentence(NamedTuple):
+    english: str
+    japanese: str
+    good_sentence: bool
 
 
 class Entry:
     def __init__(
-        self, senses, orthos, kanjis, readings, sentences=None, entry_type=VOCAB_ENTRY
-    ):
+        self, senses: list[Sense], orthos: list[Ortho], kanjis: list[Kanji],
+        readings: list[Reading], sentences: list[Sentence]=None, entry_type=VOCAB_ENTRY
+):
         self.senses = senses
         self.orthos = orthos
         self.kanjis = kanjis
@@ -73,10 +86,7 @@ class Entry:
         self.readings.sort(key=lambda reading: reading.rank)
         self.kanjis.sort(key=lambda kanji: kanji.rank)
         self.orthos.sort(key=lambda ortho: ortho.rank)
-        if sentences == None:
-            self.sentences = []
-        else:
-            self.sentences = sentences
+        self.sentences = [] if sentences == None else sentences
 
         self.entry_type = entry_type
 
@@ -121,7 +131,7 @@ class Entry:
                             del ortho.inflgrps[inflgrp_name]
 
 
-def sort_function(entry):
+def sort_function(entry: Entry):
     if len(entry.kanjis) > 0:
         k_rank = entry.kanjis[0].rank
     else:
@@ -138,9 +148,9 @@ def sort_function(entry):
 
 
 def write_index(
-    entries,
-    dictionary_name,
-    title,
+    entries: list[Entry],
+    dictionary_name: str,
+    title: str,
     glossary: Glossary,
     respect_re_restr=True,
     default_index=VOCAB_INDEX,
